@@ -41,6 +41,7 @@
             this.listView1.Size = new System.Drawing.Size(336, 234);
             this.listView1.TabIndex = 0;
             this.listView1.UseCompatibleStateImageBehavior = false;
+            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
             // 
             // button1
             // 
@@ -69,6 +70,7 @@
             this.button3.TabIndex = 3;
             this.button3.Text = "DeleteItem";
             this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.button3_Click);
             // 
             // Form1
             // 

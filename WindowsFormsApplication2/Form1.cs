@@ -13,18 +13,38 @@ namespace WindowsFormsApplication2
 {
     public partial class Form1 : Form
     {
+        class User
+        {
+            public String NAME;
+            public String CAR_NUMBER;
+            public String PHONE_NUMBER;
+            public String TIME;
+        }
+        XmlDocument xmldoc;
+        XmlNode xmlnode;
+        XmlElement xmlelem;
         public Form1()
         {
             InitializeComponent();
         }
         private void Form_1_Load(object sender, EventArgs e)
         {
+            xmldoc = new XmlDocument();
+            XmlDeclaration xmldecl;
+            xmldecl = xmldoc.CreateXmlDeclaration("1.0", "gb2312", null);
+            xmldoc.AppendChild(xmldecl);
 
+            //加入一个根元素
+            xmlelem = xmldoc.CreateElement("", "GarageInfo", "");
+            xmldoc.AppendChild(xmlelem);
             //write a xml then parse it!
-            write_xml("HUANG", "皖G45678", "18317710201", "140419");
+            /*write_xml("HUANG", "皖G45678", "18317710201", "140419");
+            write_xml("黄宁韬", "皖G12345", "15517878507", "140018");
+            write_xml("基金", "所87987", "789676567", "789799");*/
 
-            //parse xml
-            String [] s =parse_xml("data.xml");
+            //parse xml file
+            User [] usr=parse_xml("data.xml");
+
 
             listView1.GridLines = true;//表格是否显示网格线
             listView1.FullRowSelect = true;//是否选中整行
@@ -40,7 +60,11 @@ namespace WindowsFormsApplication2
             listView1.Columns.Add("TIME", "入库时间");
 
             //add stuff in list
-            add_listitem(s[0],s[1],s[2],s[3]);
+            for (int i = 0; i < usr.Length; i++)
+            {
+                add_listitem(usr[i].NAME, usr[i].CAR_NUMBER, usr[i].PHONE_NUMBER, usr[i].TIME);
+            }
+                
 
             listView1.Columns["ProductName"].Width = -1;//根据内容设置宽度
             listView1.Columns["SN"].Width = -2;//根据标题设置宽度
@@ -63,18 +87,6 @@ namespace WindowsFormsApplication2
 
         private void write_xml(String NAME, String CAR_NUMBER, String PHONE_NUMBER, String TIME)
         {
-            XmlDocument xmldoc;
-            XmlNode xmlnode;
-            XmlElement xmlelem;
-
-            xmldoc = new XmlDocument();
-            XmlDeclaration xmldecl;
-            xmldecl = xmldoc.CreateXmlDeclaration("1.0", "gb2312", null);
-            xmldoc.AppendChild(xmldecl);
-
-            //加入一个根元素
-            xmlelem = xmldoc.CreateElement("", "GarageInfo", "");
-            xmldoc.AppendChild(xmlelem);
 
             //加入另外一个元素
 
@@ -88,24 +100,66 @@ namespace WindowsFormsApplication2
             xmldoc.Save("data.xml");
         }
 
-        private String[] parse_xml(String filename) {
+        private User[] parse_xml(String filename) {
             XmlDocument doc = new XmlDocument();
             doc.Load(filename);
-            XmlNode node = doc.SelectSingleNode("/GarageInfo/User");
-            String[] s = new String[4];
-            if (node != null)
+            XmlNode node = doc.SelectSingleNode("/GarageInfo");
+            XmlNodeList nodeList = node.ChildNodes;
+            int i = nodeList.Count;
+            User[] all_usr = new User[i];
+            for(int j=0;j<i;j++)
             {
-                s[0] = node.Attributes["name"].Value;
-                s[1] = node.Attributes["carnum"].Value;
-                s[2] = node.Attributes["phonenum"].Value;
-                s[3] = node.Attributes["TIME"].Value;
-                node = null;
+                XmlNode internal_node = nodeList.Item(j);
+                if (internal_node != null)
+                {
+                    User user = new User();
+                    user.NAME = internal_node.Attributes["name"].Value;
+                    user.CAR_NUMBER = internal_node.Attributes["carnum"].Value;
+                    user.PHONE_NUMBER = internal_node.Attributes["phonenum"].Value;
+                    user.TIME = internal_node.Attributes["TIME"].Value;
+                    all_usr[j] = user;
+                }
             }
-            return s;
+
+            return all_usr;
         }
         private void button1_Click(object sender, EventArgs e)
         {
 
         }
+
+        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            int count = listView1.SelectedItems.Count;
+            if (count != 0)
+            {
+                for (int n = 0; n < count; n++)
+                {
+                    String s = listView1.SelectedItems[0].Text;
+                    XmlDocument xmlDoc = new XmlDocument();
+                    xmlDoc.Load("data.xml");
+                    XmlNode root = xmlDoc.SelectSingleNode("GarageInfo");
+                    XmlNodeList xnl = xmlDoc.SelectSingleNode("GarageInfo").ChildNodes;
+                    for (int i = 0; i < xnl.Count; i++)
+                    {
+                        XmlElement xe = (XmlElement)xnl.Item(i);
+                        if (xe.GetAttribute("name") == s)
+                        {
+                            root.RemoveChild(xe);
+                            if (i < xnl.Count) i = i - 1;
+                        }
+                    }
+                    xmlDoc.Save("data.xml");
+                    listView1.Items.Remove(listView1.SelectedItems[0]);
+                }
+            }
+        }
+
+
     }
 }

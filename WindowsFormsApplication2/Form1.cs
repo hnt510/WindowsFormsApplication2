@@ -4,7 +4,10 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
@@ -23,6 +26,9 @@ namespace WindowsFormsApplication2
         XmlDocument xmldoc;
         XmlNode xmlnode;
         XmlElement xmlelem;
+        IPEndPoint ipep;
+        Socket serverSocket;
+        Socket clientSocket;
         public Form1()
         {
             InitializeComponent();
@@ -126,6 +132,58 @@ namespace WindowsFormsApplication2
         private void button1_Click(object sender, EventArgs e)
         {
 
+            Thread listenerThread = new Thread(new ThreadStart(listener));
+            listenerThread.Start();
+        }
+
+        private void listener()
+        {
+            //throw new NotImplementedException();
+            ipep = new IPEndPoint(IPAddress.Any, 7631);
+            serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            serverSocket.Bind(ipep);
+            serverSocket.Listen(10);
+            while (true)
+            {
+                try
+                {
+                    clientSocket = serverSocket.Accept();
+                    Thread clientThread = new Thread(new ThreadStart(ReceiveData));
+                    clientThread.Start();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("listening Error: " + ex.Message);
+                }
+            }
+        }
+
+        private void ReceiveData()
+        {
+            //throw new NotImplementedException();
+            bool keepalive = true;  
+            Socket s = clientSocket;  
+            Byte[] buffer = new Byte[1024];
+
+            IPEndPoint clientep = (IPEndPoint)s.RemoteEndPoint;
+            while (keepalive)
+            { 
+                int bufLen = 0;                 
+                try 
+                { 
+                    bufLen = s.Available;
+                    s.Receive(buffer, 0, bufLen, SocketFlags.None); 
+                    if (bufLen == 0) 
+                        continue; 
+                }catch (Exception ex) 
+                { 
+                    MessageBox.Show("Receive Error:" + ex.Message);                   
+                    return; 
+                } 
+                clientep = (IPEndPoint)s.RemoteEndPoint; 
+                string clientcommand = System.Text.Encoding.ASCII.GetString(buffer).Substring(0, bufLen);
+                string sttt = clientcommand;
+            }
         }
 
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
+using System.IO;
 
 namespace WindowsFormsApplication2
 {
@@ -23,30 +24,35 @@ namespace WindowsFormsApplication2
             public String PHONE_NUMBER;
             public String TIME;
         }
-        XmlDocument xmldoc;
-        XmlNode xmlnode;
-        XmlElement xmlelem;
+        bool isStop = false;
+
         IPEndPoint ipep;
         Socket serverSocket;
         Socket clientSocket;
+        IPEndPoint clientep;
+        Socket senderSocket;
         public Form1()
         {
             InitializeComponent();
         }
+
         private void Form_1_Load(object sender, EventArgs e)
         {
-            xmldoc = new XmlDocument();
-            XmlDeclaration xmldecl;
-            xmldecl = xmldoc.CreateXmlDeclaration("1.0", "gb2312", null);
-            xmldoc.AppendChild(xmldecl);
+            if (!File.Exists("data.xml"))
+            {
+                XmlDocument xmldoc;
+                XmlNode xmlnode;
+                XmlElement xmlelem;
+                xmldoc = new XmlDocument();
+                XmlDeclaration xmldecl;
+                xmldecl = xmldoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+                xmldoc.AppendChild(xmldecl);
 
-            //加入一个根元素
-            xmlelem = xmldoc.CreateElement("", "GarageInfo", "");
-            xmldoc.AppendChild(xmlelem);
-            //write a xml then parse it!
-            /*write_xml("HUANG", "皖G45678", "18317710201", "140419");
-            write_xml("黄宁韬", "皖G12345", "15517878507", "140018");
-            write_xml("基金", "所87987", "789676567", "789799");*/
+                //加入一个根元素
+                xmlelem = xmldoc.CreateElement("", "GarageInfo", "");
+                xmldoc.AppendChild(xmlelem);
+                xmldoc.Save("data.xml");
+            }
 
             //parse xml file
             User [] usr=parse_xml("data.xml");
@@ -95,15 +101,16 @@ namespace WindowsFormsApplication2
         {
 
             //加入另外一个元素
-
-            XmlNode root = xmldoc.SelectSingleNode("GarageInfo");//查找<Employees> 
-            XmlElement xe1 = xmldoc.CreateElement("User");//创建一个<Node>节点 
+            XmlDocument doc = new XmlDocument();
+            doc.Load("data.xml");
+            XmlNode root = doc.SelectSingleNode("GarageInfo");//查找<Employees> 
+            XmlElement xe1 = doc.CreateElement("User");//创建一个<Node>节点 
             xe1.SetAttribute("name", NAME);//设置该节点genre属性 
             xe1.SetAttribute("carnum", CAR_NUMBER);//设置该节点ISBN属性
             xe1.SetAttribute("phonenum", PHONE_NUMBER);
             xe1.SetAttribute("TIME", TIME);
             root.AppendChild(xe1);//添加到<Employees>节点中 
-            xmldoc.Save("data.xml");
+            doc.Save("data.xml");
         }
 
         private User[] parse_xml(String filename) {
@@ -131,18 +138,38 @@ namespace WindowsFormsApplication2
         }
         private void button1_Click(object sender, EventArgs e)
         {
-
             Thread listenerThread = new Thread(new ThreadStart(listener));
-            listenerThread.Start();
+            if (isStop == true)
+            {
+                stopListen();
+                button1.Text = "Listen";
+                isStop = false;
+                listenerThread.Abort();
+                
+            }
+            else
+            {
+                button1.Text = "Stop";
+                ipep = new IPEndPoint(IPAddress.Any, 7631);
+                serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                serverSocket.Bind(ipep);
+                serverSocket.Listen(10);
+                listenerThread.Start();
+                MessageBox.Show("Start Listening on Port" + " 7631");
+                isStop = true;
+            }
+        }
+
+        private void stopListen()
+        {
+            //throw new NotImplementedException();
+            serverSocket.Shutdown(SocketShutdown.Receive);
         }
 
         private void listener()
         {
             //throw new NotImplementedException();
-            ipep = new IPEndPoint(IPAddress.Any, 7631);
-            serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            serverSocket.Bind(ipep);
-            serverSocket.Listen(10);
+
             while (true)
             {
                 try
@@ -150,6 +177,7 @@ namespace WindowsFormsApplication2
                     clientSocket = serverSocket.Accept();
                     Thread clientThread = new Thread(new ThreadStart(ReceiveData));
                     clientThread.Start();
+                 
                 }
                 catch (Exception ex)
                 {
@@ -165,7 +193,7 @@ namespace WindowsFormsApplication2
             Socket s = clientSocket;  
             Byte[] buffer = new Byte[1024];
 
-            IPEndPoint clientep = (IPEndPoint)s.RemoteEndPoint;
+            clientep = (IPEndPoint)s.RemoteEndPoint;
             while (keepalive)
             { 
                 int bufLen = 0;                 
@@ -181,8 +209,13 @@ namespace WindowsFormsApplication2
                     return; 
                 } 
                 clientep = (IPEndPoint)s.RemoteEndPoint; 
-                string clientcommand = System.Text.Encoding.ASCII.GetString(buffer).Substring(0, bufLen);
-                string sttt = clientcommand;
+                string clientcommand = System.Text.Encoding.UTF8.GetString(buffer).Substring(0, bufLen);
+                string [] split=clientcommand.Split(' ');
+                                    Invoke(new MethodInvoker(delegate()
+                    {
+                        add_listitem(split[0], split[1], split[2], split[3]);
+                        write_xml(split[0], split[1], split[2], split[3]);
+                    }));
             }
         }
 
@@ -214,6 +247,21 @@ namespace WindowsFormsApplication2
                     }
                     xmlDoc.Save("data.xml");
                     listView1.Items.Remove(listView1.SelectedItems[0]);
+
+                    //send delete info
+                    IPEndPoint mobileIP = new IPEndPoint(clientep.Address, 6001);
+                    senderSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    try  
+                    {
+                        senderSocket.Connect(ipep);              
+                    }catch (SocketException ex)  
+                    { 
+                        MessageBox.Show("connect error: " + ex.Message);                  
+                        return;
+                    }
+                    byte[] data = new byte[1024];
+                    data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
+                    senderSocket.Send(data, data.Length, SocketFlags.None);
                 }
             }
         }

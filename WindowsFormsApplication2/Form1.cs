@@ -26,7 +26,7 @@ namespace WindowsFormsApplication2
             public String PHONE_NUMBER;
             public String TIME;
         }
-        bool isStop = false;
+        bool isListening = false;
 
         public IPEndPoint ipep;
         public Socket serverSocket;
@@ -155,7 +155,7 @@ namespace WindowsFormsApplication2
         {
             Thread listenerThread = new Thread(new ThreadStart(listener));
             listenerThread.IsBackground = true;
-            if (isStop == false)
+            if (isListening == false)
             {
                 //set connection
                 ipep = new IPEndPoint(IPAddress.Any, 7631);
@@ -166,7 +166,7 @@ namespace WindowsFormsApplication2
                 //start a listener thread in order to avoid jamming the main thread 
                 listenerThread.Start();
                 MessageBox.Show("Start Listening on Port" + " 7631");
-                isStop = true;
+                isListening = true;
             }
             else {
                 MessageBox.Show("Already Listening");
@@ -314,6 +314,7 @@ namespace WindowsFormsApplication2
                         catch (SocketException ex)
                         {
                             MessageBox.Show("connect error: " + ex.Message);
+                            listView1.Items.Remove(listView1.SelectedItems[0]);
                             return;
                         }
                         byte[] data = new byte[1024];

@@ -165,11 +165,11 @@ namespace WindowsFormsApplication2
 
                 //start a listener thread in order to avoid jamming the main thread 
                 listenerThread.Start();
-                MessageBox.Show("Start Listening on Port" + " 7631");
+                MessageBox.Show("开始侦听端口" + " 7631");
                 isListening = true;
             }
             else {
-                MessageBox.Show("Already Listening");
+                MessageBox.Show("正在侦听");
             }
  
         }

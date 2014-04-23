@@ -48,7 +48,7 @@
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(75, 29);
             this.button1.TabIndex = 1;
-            this.button1.Text = "Listen";
+            this.button1.Text = "侦听";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
@@ -58,7 +58,7 @@
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(73, 32);
             this.button3.TabIndex = 3;
-            this.button3.Text = "Car Goes Out";
+            this.button3.Text = "汽车出库";
             this.button3.UseVisualStyleBackColor = true;
             this.button3.Click += new System.EventHandler(this.button3_Click);
             // 
@@ -73,7 +73,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "汽车管理电脑端";
             this.Load += new System.EventHandler(this.Form_1_Load);
             this.ResumeLayout(false);
 

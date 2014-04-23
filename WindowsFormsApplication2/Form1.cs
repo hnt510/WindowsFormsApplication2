@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using System.IO;
+using System.Collections;
 
 namespace WindowsFormsApplication2
 {
@@ -19,6 +20,7 @@ namespace WindowsFormsApplication2
     {
         class User
         {
+            //User data structure
             public String NAME;
             public String CAR_NUMBER;
             public String PHONE_NUMBER;
@@ -26,11 +28,13 @@ namespace WindowsFormsApplication2
         }
         bool isStop = false;
 
-        IPEndPoint ipep;
-        Socket serverSocket;
-        Socket clientSocket;
-        IPEndPoint clientep;
-        Socket senderSocket;
+        public IPEndPoint ipep;
+        public Socket serverSocket;
+        public Socket clientSocket;
+        public IPEndPoint clientep;
+        public Socket senderSocket;
+
+        public Hashtable hshTable = new Hashtable();
         public Form1()
         {
             InitializeComponent();
@@ -38,7 +42,8 @@ namespace WindowsFormsApplication2
 
         private void Form_1_Load(object sender, EventArgs e)
         {
-            if (!File.Exists("data.xml"))
+            //create data.xml
+            if (!File.Exists("data.xml"))          
             {
                 XmlDocument xmldoc;
                 XmlNode xmlnode;
@@ -71,22 +76,24 @@ namespace WindowsFormsApplication2
             listView1.Columns.Add("PHONE_NUMBER", "电话号码");
             listView1.Columns.Add("TIME", "入库时间");
 
-            //add stuff in list
+            //add stuff in listview
             for (int i = 0; i < usr.Length; i++)
             {
                 add_listitem(usr[i].NAME, usr[i].CAR_NUMBER, usr[i].PHONE_NUMBER, usr[i].TIME);
             }
-                
 
-            listView1.Columns["ProductName"].Width = -1;//根据内容设置宽度
-            listView1.Columns["SN"].Width = -2;//根据标题设置宽度
 
-            listView1.Columns["Price"].Width = -2;
-            listView1.Columns["Number"].Width = -2;
+            listView1.Columns["NAME"].Width = -2;//根据内容设置宽度
+            listView1.Columns["CAR_NUMBER"].Width = -2;//根据标题设置宽度
+
+            listView1.Columns["PHONE_NUMBER"].Width = -2;
+            listView1.Columns["TIME"].Width = -2;
         }
+
+        
         private void add_listitem(String NAME, String CAR_NUMBER, String PHONE_NUMBER, String TIME)
         {
-            //添加表格内容
+            //添加表格内容 add a row into listview
                 ListViewItem item = new ListViewItem();
                 item.SubItems.Clear();
 
@@ -97,6 +104,7 @@ namespace WindowsFormsApplication2
                 listView1.Items.Add(item);
         }
 
+        //write a user's info into xml file as a child node
         private void write_xml(String NAME, String CAR_NUMBER, String PHONE_NUMBER, String TIME)
         {
 
@@ -113,6 +121,7 @@ namespace WindowsFormsApplication2
             doc.Save("data.xml");
         }
 
+        //read existing xml data
         private User[] parse_xml(String filename) {
             XmlDocument doc = new XmlDocument();
             doc.Load(filename);
@@ -120,6 +129,8 @@ namespace WindowsFormsApplication2
             XmlNodeList nodeList = node.ChildNodes;
             int i = nodeList.Count;
             User[] all_usr = new User[i];
+
+            //read all data into User[] array
             for(int j=0;j<i;j++)
             {
                 XmlNode internal_node = nodeList.Item(j);
@@ -133,49 +144,45 @@ namespace WindowsFormsApplication2
                     all_usr[j] = user;
                 }
             }
-
             return all_usr;
         }
+
+        //Listen button onclick
         private void button1_Click(object sender, EventArgs e)
         {
             Thread listenerThread = new Thread(new ThreadStart(listener));
-            if (isStop == true)
+            listenerThread.IsBackground = true;
+            if (isStop == false)
             {
-                stopListen();
-                button1.Text = "Listen";
-                isStop = false;
-                listenerThread.Abort();
-                
-            }
-            else
-            {
-                button1.Text = "Stop";
+                //set connection
                 ipep = new IPEndPoint(IPAddress.Any, 7631);
                 serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 serverSocket.Bind(ipep);
                 serverSocket.Listen(10);
+
+                //start a listener thread in order to avoid jamming the main thread 
                 listenerThread.Start();
                 MessageBox.Show("Start Listening on Port" + " 7631");
                 isStop = true;
             }
+            else {
+                MessageBox.Show("Already Listening");
+            }
+ 
         }
 
-        private void stopListen()
-        {
-            //throw new NotImplementedException();
-            serverSocket.Shutdown(SocketShutdown.Receive);
-        }
-
+        //lintener thread operation
         private void listener()
         {
-            //throw new NotImplementedException();
 
             while (true)
             {
                 try
                 {
+                    //create a new thread when a tcp connection accepted to recive data
                     clientSocket = serverSocket.Accept();
                     Thread clientThread = new Thread(new ThreadStart(ReceiveData));
+                    clientThread.IsBackground = true;
                     clientThread.Start();
                  
                 }
@@ -188,7 +195,6 @@ namespace WindowsFormsApplication2
 
         private void ReceiveData()
         {
-            //throw new NotImplementedException();
             bool keepalive = true;  
             Socket s = clientSocket;  
             Byte[] buffer = new Byte[1024];
@@ -196,7 +202,8 @@ namespace WindowsFormsApplication2
             clientep = (IPEndPoint)s.RemoteEndPoint;
             while (keepalive)
             { 
-                int bufLen = 0;                 
+                int bufLen = 0;             
+                //client socket recive
                 try 
                 { 
                     bufLen = s.Available;
@@ -208,14 +215,22 @@ namespace WindowsFormsApplication2
                     MessageBox.Show("Receive Error:" + ex.Message);                   
                     return; 
                 } 
-                clientep = (IPEndPoint)s.RemoteEndPoint; 
+                //get client ip
+                clientep = (IPEndPoint)s.RemoteEndPoint;
+                
+                //get stuff from buffer
                 string clientcommand = System.Text.Encoding.UTF8.GetString(buffer).Substring(0, bufLen);
                 string [] split=clientcommand.Split(' ');
-                                    Invoke(new MethodInvoker(delegate()
-                    {
-                        add_listitem(split[0], split[1], split[2], split[3]);
-                        write_xml(split[0], split[1], split[2], split[3]);
-                    }));
+
+                //store username ipAddress pair so i can send info to corresponding client
+                hshTable.Add(split[0],clientep.Address);
+
+                //write recived info in listview and xml file through safe thread operation
+                Invoke(new MethodInvoker(delegate()
+                {
+                    add_listitem(split[0], split[1], split[2], split[3]);
+                    write_xml(split[0], split[1], split[2], split[3].Trim());
+                }));
             }
         }
 
@@ -224,6 +239,7 @@ namespace WindowsFormsApplication2
 
         }
 
+        //delete item button onclick
         private void button3_Click(object sender, EventArgs e)
         {
             int count = listView1.SelectedItems.Count;
@@ -231,7 +247,8 @@ namespace WindowsFormsApplication2
             {
                 for (int n = 0; n < count; n++)
                 {
-                    String s = listView1.SelectedItems[0].Text;
+                    //delete item in xml file
+                    String name = listView1.SelectedItems[0].Text;
                     XmlDocument xmlDoc = new XmlDocument();
                     xmlDoc.Load("data.xml");
                     XmlNode root = xmlDoc.SelectSingleNode("GarageInfo");
@@ -239,21 +256,46 @@ namespace WindowsFormsApplication2
                     for (int i = 0; i < xnl.Count; i++)
                     {
                         XmlElement xe = (XmlElement)xnl.Item(i);
-                        if (xe.GetAttribute("name") == s)
+                        if (xe.GetAttribute("name") == name)
                         {
                             root.RemoveChild(xe);
                             if (i < xnl.Count) i = i - 1;
                         }
                     }
                     xmlDoc.Save("data.xml");
+
+                    //calculate fee
+                    string TIME = listView1.SelectedItems[0].SubItems[3].Text.Substring(0, 6);
+                    int duration=convertTime(DateTime.Now.Day.ToString()+DateTime.Now.Hour.ToString()+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    if (duration <= 60)
+                    {
+                        double fee = duration * 0.1;
+                        MessageBox.Show("您目前已停" + duration.ToString()
+                                + "分钟，需要交" + fee.ToString() + "元");
+                    }
+                    else if (duration <= 120)
+                    {
+                        double fee = 60 * 0.1 + (duration - 60) * 0.2;
+                        MessageBox.Show("您目前已停" + duration.ToString()
+                                + "分钟，需要交" + fee.ToString() + "元");
+                    }
+                    else
+                    {
+                        double fee = 60 * 0.1 + 60 * 0.2 + (duration - 120) * 0.3;
+                        MessageBox.Show("您目前已停" + duration.ToString()
+                                + "分钟，需要交" + fee.ToString() + "元");
+                    }
+
+                    //remove list item
                     listView1.Items.Remove(listView1.SelectedItems[0]);
 
-                    //send delete info
-                    IPEndPoint mobileIP = new IPEndPoint(clientep.Address, 6001);
+                    //send delete info to corresponding user using ip address in hshTable 
+                    IPAddress reciveIP = (IPAddress)hshTable[name];
+                    IPEndPoint mobilePoint = new IPEndPoint(reciveIP, 24358);
                     senderSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try  
                     {
-                        senderSocket.Connect(ipep);              
+                        senderSocket.Connect(mobilePoint);              
                     }catch (SocketException ex)  
                     { 
                         MessageBox.Show("connect error: " + ex.Message);                  
@@ -266,6 +308,15 @@ namespace WindowsFormsApplication2
             }
         }
 
-
+        //convert current time
+        private int convertTime(string time)
+        {
+            char[] c = new char[time.Length];
+            c = time.ToCharArray();
+            int dd = (c[0] - '0') * 10 + (c[1] - '0');
+            int hh = (c[2] - '0') * 10 + (c[3] - '0');
+            int mm = (c[4] - '0') * 10 + (c[5] - '0');
+            return mm + hh * 60 + dd * 60 * 24;
+        }
     }
 }

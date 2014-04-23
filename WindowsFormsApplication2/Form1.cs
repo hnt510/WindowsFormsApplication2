@@ -223,7 +223,9 @@ namespace WindowsFormsApplication2
                 
                 //get stuff from buffer
                 string clientcommand = System.Text.Encoding.UTF8.GetString(buffer).Substring(0, bufLen);
-                string [] split=clientcommand.Split(' ');
+                string[] stringSeparators = new string[] { "EOF" };
+                string[] split = clientcommand.Split(stringSeparators, StringSplitOptions.RemoveEmptyEntries);
+
 
                 //store username ipAddress pair so i can send info to corresponding client
                 hshTable.Add(split[0],clientep.Address);
@@ -234,7 +236,11 @@ namespace WindowsFormsApplication2
                     add_listitem(split[0], split[1], split[2], split[3]);
                     write_xml(split[0], split[1], split[2], split[3].Trim());
                 }));
+                keepalive = false;
             }
+            s.Shutdown(SocketShutdown.Receive);
+            s.Close();
+            Thread.CurrentThread.Abort();
         }
 
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)
@@ -319,7 +325,9 @@ namespace WindowsFormsApplication2
                         }
                         byte[] data = new byte[1024];
                         data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
-                        senderSocket.Send(data, data.Length, SocketFlags.None);      
+                        senderSocket.Send(data, data.Length, SocketFlags.None);
+                        senderSocket.Shutdown(SocketShutdown.Both);
+                        senderSocket.Close();
                     }
                     else { 
                         Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输

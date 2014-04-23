@@ -42,6 +42,9 @@ namespace WindowsFormsApplication2
 
         private void Form_1_Load(object sender, EventArgs e)
         {
+            //only allow one application to run
+            if (CheckIsRun())
+                Application.Exit();
             //create data.xml
             if (!File.Exists("data.xml"))          
             {
@@ -239,9 +242,10 @@ namespace WindowsFormsApplication2
 
         }
 
-        //delete item button onclick
+        //Car Goes Out button onclick
         private void button3_Click(object sender, EventArgs e)
         {
+            IPEndPoint mobilePoint;
             int count = listView1.SelectedItems.Count;
             if (count != 0)
             {
@@ -266,7 +270,16 @@ namespace WindowsFormsApplication2
 
                     //calculate fee
                     string TIME = listView1.SelectedItems[0].SubItems[3].Text.Substring(0, 6);
-                    int duration=convertTime(DateTime.Now.Day.ToString()+DateTime.Now.Hour.ToString()+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    int duration;
+                    //f**k this stupid c# time function
+                    if (DateTime.Now.Minute.ToString().Length == 1)
+                    {
+                        duration = convertTime(DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
+                    else
+                    {
+                        duration = convertTime(DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
                     if (duration <= 60)
                     {
                         double fee = duration * 0.1;
@@ -286,24 +299,38 @@ namespace WindowsFormsApplication2
                                 + "分钟，需要交" + fee.ToString() + "元");
                     }
 
-                    //remove list item
-                    listView1.Items.Remove(listView1.SelectedItems[0]);
-
                     //send delete info to corresponding user using ip address in hshTable 
                     IPAddress reciveIP = (IPAddress)hshTable[name];
-                    IPEndPoint mobilePoint = new IPEndPoint(reciveIP, 24358);
-                    senderSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    try  
-                    {
-                        senderSocket.Connect(mobilePoint);              
-                    }catch (SocketException ex)  
-                    { 
-                        MessageBox.Show("connect error: " + ex.Message);                  
-                        return;
+
+                    //I just broadcast delete info if reciveIP is null(when user's info is loaded from xml)
+                    if (reciveIP != null)
+                    {
+                        mobilePoint = new IPEndPoint(reciveIP, 24358);
+                        senderSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        try
+                        {
+                            senderSocket.Connect(mobilePoint);
+                        }
+                        catch (SocketException ex)
+                        {
+                            MessageBox.Show("connect error: " + ex.Message);
+                            return;
+                        }
+                        byte[] data = new byte[1024];
+                        data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
+                        senderSocket.Send(data, data.Length, SocketFlags.None);      
                     }
-                    byte[] data = new byte[1024];
-                    data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
-                    senderSocket.Send(data, data.Length, SocketFlags.None);
+                    else { 
+                        Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
+                        IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, 24358);
+                        sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);
+                        byte[] data = new byte[1024];
+                        data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
+                        sock.SendTo(data,iep);
+                        sock.Close();
+                    }
+                    //remove list item
+                    listView1.Items.Remove(listView1.SelectedItems[0]);
                 }
             }
         }
@@ -317,6 +344,19 @@ namespace WindowsFormsApplication2
             int hh = (c[2] - '0') * 10 + (c[3] - '0');
             int mm = (c[4] - '0') * 10 + (c[5] - '0');
             return mm + hh * 60 + dd * 60 * 24;
+        }
+
+        private bool CheckIsRun() 
+        {
+            string procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+            if (System.Diagnostics.Process.GetProcessesByName(procName).GetUpperBound(0) > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }

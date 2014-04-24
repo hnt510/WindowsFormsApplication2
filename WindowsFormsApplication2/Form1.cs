@@ -253,12 +253,16 @@ namespace WindowsFormsApplication2
         {
             IPEndPoint mobilePoint;
             int count = listView1.SelectedItems.Count;
+            string NAME = listView1.SelectedItems[0].Text;
+            string carNum = listView1.SelectedItems[0].SubItems[1].Text;
+            string phoneNum = listView1.SelectedItems[0].SubItems[2].Text;
+            string TIME = listView1.SelectedItems[0].SubItems[3].Text.Substring(0, 6);
+
             if (count != 0)
             {
                 for (int n = 0; n < count; n++)
                 {
                     //delete item in xml file
-                    String name = listView1.SelectedItems[0].Text;
                     XmlDocument xmlDoc = new XmlDocument();
                     xmlDoc.Load("data.xml");
                     XmlNode root = xmlDoc.SelectSingleNode("GarageInfo");
@@ -266,7 +270,7 @@ namespace WindowsFormsApplication2
                     for (int i = 0; i < xnl.Count; i++)
                     {
                         XmlElement xe = (XmlElement)xnl.Item(i);
-                        if (xe.GetAttribute("name") == name)
+                        if (xe.GetAttribute("name") == NAME)
                         {
                             root.RemoveChild(xe);
                             if (i < xnl.Count) i = i - 1;
@@ -275,10 +279,25 @@ namespace WindowsFormsApplication2
                     xmlDoc.Save("data.xml");
 
                     //calculate fee
-                    string TIME = listView1.SelectedItems[0].SubItems[3].Text.Substring(0, 6);
                     int duration;
-                    //f**k this stupid c# time function
-                    if (DateTime.Now.Minute.ToString().Length == 1)
+                    ///I hate this stupid c# time function
+                    if ((DateTime.Now.Day.ToString().Length==1)&&(DateTime.Now.Minute.ToString().Length == 1) && (DateTime.Now.Hour.ToString().Length==1))
+                    {
+                        duration = convertTime("0"+DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
+                    else if ((DateTime.Now.Minute.ToString().Length == 1) && (DateTime.Now.Hour.ToString().Length == 1))
+                    {
+                        duration = convertTime(DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
+                    else if (DateTime.Now.Day.ToString().Length == 1) 
+                    {
+                        duration = convertTime("0"+DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
+                    else if (DateTime.Now.Hour.ToString().Length == 1) 
+                    {
+                        duration = convertTime(DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                    }
+                    else if (DateTime.Now.Minute.ToString().Length == 1) 
                     {
                         duration = convertTime(DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
                     }
@@ -306,7 +325,7 @@ namespace WindowsFormsApplication2
                     }
 
                     //send delete info to corresponding user using ip address in hshTable 
-                    IPAddress reciveIP = (IPAddress)hshTable[name];
+                    IPAddress reciveIP = (IPAddress)hshTable[NAME];
 
                     //I just broadcast delete info if reciveIP is null(when user's info is loaded from xml)
                     if (reciveIP != null)
@@ -324,7 +343,7 @@ namespace WindowsFormsApplication2
                             return;
                         }
                         byte[] data = new byte[1024];
-                        data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
+                        data = Encoding.UTF8.GetBytes(NAME+"EOF"+carNum+"EOF"+phoneNum+"EOF"+TIME);
                         senderSocket.Send(data, data.Length, SocketFlags.None);
                         senderSocket.Shutdown(SocketShutdown.Both);
                         senderSocket.Close();

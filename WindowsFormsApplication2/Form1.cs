@@ -359,6 +359,7 @@ namespace WindowsFormsApplication2
                     }
                     //remove list item
                     listView1.Items.Remove(listView1.SelectedItems[0]);
+                    hshTable.Remove(NAME);
                 }
             }
         }

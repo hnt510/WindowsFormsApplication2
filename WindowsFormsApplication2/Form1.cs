@@ -150,6 +150,23 @@ namespace WindowsFormsApplication2
             return all_usr;
         }
 
+        private void delete_xml(String NAME, String carNum, String phoneNum, String TIME)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load("data.xml");
+            XmlNode root = xmlDoc.SelectSingleNode("GarageInfo");
+            XmlNodeList xnl = xmlDoc.SelectSingleNode("GarageInfo").ChildNodes;
+            for (int i = 0; i < xnl.Count; i++)
+            {
+                XmlElement xe = (XmlElement)xnl.Item(i);
+                if (xe.GetAttribute("name") == NAME)
+                {
+                    root.RemoveChild(xe);
+                    if (i < xnl.Count) i = i - 1;
+                }
+            }
+            xmlDoc.Save("data.xml");
+        }
         //Listen button onclick
         private void button1_Click(object sender, EventArgs e)
         {
@@ -226,17 +243,34 @@ namespace WindowsFormsApplication2
                 string[] stringSeparators = new string[] { "EOF" };
                 string[] split = clientcommand.Split(stringSeparators, StringSplitOptions.RemoveEmptyEntries);
 
-
-                //store username ipAddress pair so i can send info to corresponding client
-                hshTable.Add(split[0],clientep.Address);
-
-                //write recived info in listview and xml file through safe thread operation
-                Invoke(new MethodInvoker(delegate()
+                if (split[4] == "IN\n")
                 {
-                    add_listitem(split[0], split[1], split[2], split[3]);
-                    write_xml(split[0], split[1], split[2], split[3].Trim());
-                }));
-                keepalive = false;
+                    //store username ipAddress pair so i can send info to corresponding client
+                    hshTable.Add(split[0], clientep.Address);
+
+                    //write recived info in listview and xml file through safe thread operation
+                    Invoke(new MethodInvoker(delegate()
+                    {
+                        add_listitem(split[0], split[1], split[2], split[3]);
+                        write_xml(split[0], split[1], split[2], split[3].Trim());
+                    }));
+                    keepalive = false;
+                }else if (split[4]=="OUT\n"){
+                    Invoke(new MethodInvoker(delegate()
+                    {
+                        delete_xml(split[0], split[1], split[2], split[3]);
+                        for (int i = 0; i < listView1.Items.Count; i++)
+                        {
+                            //处理Item   
+                            ListViewItem item = listView1.Items[i];
+                            if (item.Text == split[0])
+                            {
+                                listView1.Items.Remove(item);
+                            }
+                        }
+                        MessageBox.Show(split[0] + "已经出库");
+                    }));
+                }
             }
             s.Shutdown(SocketShutdown.Receive);
             s.Close();
@@ -252,6 +286,8 @@ namespace WindowsFormsApplication2
         private void button3_Click(object sender, EventArgs e)
         {
             IPEndPoint mobilePoint;
+            if (listView1.SelectedItems.Count == 0)
+                return;
             int count = listView1.SelectedItems.Count;
             string NAME = listView1.SelectedItems[0].Text;
             string carNum = listView1.SelectedItems[0].SubItems[1].Text;
@@ -277,34 +313,39 @@ namespace WindowsFormsApplication2
                         }
                     }
                     xmlDoc.Save("data.xml");
-
+                }
+            }
                     //calculate fee
                     int duration;
-                    ///I hate this stupid c# time function
-                    if ((DateTime.Now.Day.ToString().Length==1)&&(DateTime.Now.Minute.ToString().Length == 1) && (DateTime.Now.Hour.ToString().Length==1))
+
+                    String currentTime = null;
+
+                    if (DateTime.Now.Day.ToString().Length == 1)
                     {
-                        duration = convertTime("0"+DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
-                    }
-                    else if ((DateTime.Now.Minute.ToString().Length == 1) && (DateTime.Now.Hour.ToString().Length == 1))
-                    {
-                        duration = convertTime(DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
-                    }
-                    else if (DateTime.Now.Day.ToString().Length == 1) 
-                    {
-                        duration = convertTime("0"+DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
-                    }
-                    else if (DateTime.Now.Hour.ToString().Length == 1) 
-                    {
-                        duration = convertTime(DateTime.Now.Day.ToString() + "0"+DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
-                    }
-                    else if (DateTime.Now.Minute.ToString().Length == 1) 
-                    {
-                        duration = convertTime(DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + "0"+DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                        currentTime = "0" + DateTime.Now.Day.ToString();
                     }
                     else
                     {
-                        duration = convertTime(DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString()) - convertTime(TIME);
+                        currentTime = DateTime.Now.Day.ToString();
                     }
+                    if (DateTime.Now.Hour.ToString().Length == 1)
+                    {
+                        currentTime = currentTime + "0" + DateTime.Now.Hour.ToString();
+                    }
+                    else
+                    {
+                        currentTime = currentTime + DateTime.Now.Hour.ToString();
+                    }
+                    if (DateTime.Now.Minute.ToString().Length == 1)
+                    {
+                        currentTime = currentTime + "0" + DateTime.Now.Minute.ToString();
+                    }
+                    else
+                    {
+                        currentTime = currentTime + DateTime.Now.Minute.ToString();
+                    }
+                    duration = convertTime(currentTime) - convertTime(TIME);
+                    
                     if (duration <= 60)
                     {
                         double fee = duration * 0.1;
@@ -350,18 +391,17 @@ namespace WindowsFormsApplication2
                     }
                     else { 
                         Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
-                        IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, 24358);
+                        IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, 23654);
                         sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);
                         byte[] data = new byte[1024];
-                        data = Encoding.UTF8.GetBytes(listView1.SelectedItems[0].Text);
+                        data = Encoding.UTF8.GetBytes(NAME + "EOF" + carNum + "EOF" + phoneNum + "EOF" + TIME);
                         sock.SendTo(data,iep);
                         sock.Close();
                     }
                     //remove list item
                     listView1.Items.Remove(listView1.SelectedItems[0]);
                     hshTable.Remove(NAME);
-                }
-            }
+                    MessageBox.Show("汽车出库");
         }
 
         //convert current time

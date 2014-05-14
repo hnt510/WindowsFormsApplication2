@@ -80,7 +80,6 @@ namespace WindowsFormsApplication2
             //parse xml file
             User [] usr=parse_xml("data.xml");
 
-
             listView1.GridLines = true;//表格是否显示网格线
             listView1.FullRowSelect = true;//是否选中整行
 
@@ -268,8 +267,38 @@ namespace WindowsFormsApplication2
                         add_listitem(split[0], split[1], split[2], split[3]);
                         write_xml(split[0], split[1], split[2], split[3].Trim());
                     }));
-                    keepalive = false;
-                }else if (split[4]=="OUT"){
+                }
+                else if (split[4] == "OUTREQ")
+                {
+                    MessageBoxButtons messButton = MessageBoxButtons.OKCancel;
+                    DialogResult dr = MessageBox.Show(split[0]+"需要出库", "退出系统", messButton);
+                     if (dr == DialogResult.OK)//如果点击“确定”按钮
+                    {
+                        IPEndPoint mobilePoint;
+                        mobilePoint = new IPEndPoint(clientep.Address, 24358);
+                        senderSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        try
+                        {
+                            senderSocket.Connect(mobilePoint);
+                        }
+                        catch (SocketException ex)
+                        {
+                            MessageBox.Show("connect error: " + ex.Message);
+                            listView1.Items.Remove(listView1.SelectedItems[0]);
+                            return;
+                        }
+                        byte[] data = new byte[1024];
+                        data = Encoding.UTF8.GetBytes(split[0] + "EOF" + split[1] + "EOF" + split[2] + "EOF" + split[3]+"EOF"+"CONFIRM"+"EOF"+"ENDTRANSMITION");
+                        senderSocket.Send(data, data.Length, SocketFlags.None);
+                        senderSocket.Shutdown(SocketShutdown.Both);
+                        senderSocket.Close();
+                       }
+                        else
+                        {
+                        }
+                }
+                else if (split[4] == "OUT")
+                {
                     Invoke(new MethodInvoker(delegate()
                     {
                         delete_xml(split[0], split[1], split[2], split[3]);
@@ -285,6 +314,7 @@ namespace WindowsFormsApplication2
                         MessageBox.Show(split[0] + "已经出库");
                     }));
                 }
+                keepalive = false;
             }
             s.Shutdown(SocketShutdown.Receive);
             s.Close();
@@ -398,7 +428,7 @@ namespace WindowsFormsApplication2
                             return;
                         }
                         byte[] data = new byte[1024];
-                        data = Encoding.UTF8.GetBytes(NAME+"EOF"+carNum+"EOF"+phoneNum+"EOF"+TIME);
+                        data = Encoding.UTF8.GetBytes(NAME+"EOF"+carNum+"EOF"+phoneNum+"EOF"+TIME+"EOF"+"OUT"+"EOF"+"ENDTRANSMITION");
                         senderSocket.Send(data, data.Length, SocketFlags.None);
                         senderSocket.Shutdown(SocketShutdown.Both);
                         senderSocket.Close();
@@ -408,7 +438,7 @@ namespace WindowsFormsApplication2
                         IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, 23654);
                         sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);
                         byte[] data = new byte[1024];
-                        data = Encoding.UTF8.GetBytes(NAME + "EOF" + carNum + "EOF" + phoneNum + "EOF" + TIME);
+                        data = Encoding.UTF8.GetBytes(NAME + "EOF" + carNum + "EOF" + phoneNum + "EOF" + TIME+"EOF"+"OUT"+"EOF"+"ENDTRANSMITION");
                         sock.SendTo(data,iep);
                         sock.Close();
                     }

@@ -37,16 +37,16 @@
             // 
             this.listView1.Location = new System.Drawing.Point(28, 26);
             this.listView1.Name = "listView1";
-            this.listView1.Size = new System.Drawing.Size(336, 234);
+            this.listView1.Size = new System.Drawing.Size(336, 289);
             this.listView1.TabIndex = 0;
             this.listView1.UseCompatibleStateImageBehavior = false;
             this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(397, 72);
+            this.button1.Location = new System.Drawing.Point(442, 71);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 29);
+            this.button1.Size = new System.Drawing.Size(98, 35);
             this.button1.TabIndex = 1;
             this.button1.Text = "侦听";
             this.button1.UseVisualStyleBackColor = true;
@@ -54,9 +54,9 @@
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(399, 190);
+            this.button3.Location = new System.Drawing.Point(442, 243);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(73, 32);
+            this.button3.Size = new System.Drawing.Size(98, 32);
             this.button3.TabIndex = 3;
             this.button3.Text = "汽车出库";
             this.button3.UseVisualStyleBackColor = true;
@@ -66,7 +66,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(513, 305);
+            this.ClientSize = new System.Drawing.Size(586, 356);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.listView1);

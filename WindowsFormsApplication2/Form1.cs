@@ -23,7 +23,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+//using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using System.IO;
@@ -271,7 +271,7 @@ namespace WindowsFormsApplication2
                 else if (split[4] == "OUTREQ")
                 {
                     MessageBoxButtons messButton = MessageBoxButtons.OKCancel;
-                    DialogResult dr = MessageBox.Show(split[0]+"需要出库", "退出系统", messButton);
+                    DialogResult dr = MessageBox.Show(split[0]+"需要出库", "有人出库", messButton);
                      if (dr == DialogResult.OK)//如果点击“确定”按钮
                     {
                         IPEndPoint mobilePoint;
